@@ -1,0 +1,9 @@
+{
+    "help": 3,
+    "show all prods": 1,
+    "add prod": 1,
+    "del prod by name": 1,
+    "exit": 3,
+    "show log": 2,
+    "sold prod": 1
+}
