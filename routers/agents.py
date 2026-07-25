@@ -1,6 +1,8 @@
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from functions import open_files
 from keyboards.agents import build_agents_keyboard#, build_product_action
@@ -8,16 +10,21 @@ from functions import products as funcs_prods, reviews as funcs_revs
 from form.products import ProdCreateForm
 from form.reviews import ReviewCreateForm
 from log.log import bot_log
-from models import AgentModel
+from models import AgentModel, async_session, Status
+from middleware import DbSessionMiddleware
 
 
 agent_router = Router()
+agent_router.update.outer_middleware(DbSessionMiddleware(session_pool=async_session))
 
 
 @agent_router.message(F.text == "Список агентів")
-async def show_all_prods(message: Message, state: FSMContext) -> None:
-    products = open_files.products
-    keyboard = build_agents_keyboard(products)
+async def show_all_prods(message: Message, state: FSMContext, session: AsyncSession) -> None:
+    result = await session.execute(
+        select(AgentModel).filter_by(status=Status.in_progress)
+    )
+    agents = result.scalars().all()
+    keyboard = build_agents_keyboard(agents)
     await edit_or_answer(
         message,
         "Список товарів",
