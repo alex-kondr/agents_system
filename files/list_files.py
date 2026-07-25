@@ -1,7 +1,0 @@
-help = "files/help.txt"
-products = "files/products.json"
-reviews = "files/reviews.json"
-employees = "files/employees.json"
-products_sold = "files/products_sold.json"
-log = "files/log.json"
-most_using_command = "files/most_using_command.json"

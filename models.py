@@ -30,6 +30,7 @@ class Status(enum.Enum):
     done = "Done"
     qc = "QC"
     accepted = "Accepted"
+    running = "Running"
 
 
 class Base(DeclarativeBase):

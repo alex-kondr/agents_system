@@ -1,5 +1,23 @@
+from typing import List
+import enum
+
 from aiogram.types.inline_keyboard_markup import InlineKeyboardMarkup
 from aiogram.utils.keyboard import InlineKeyboardBuilder, ReplyKeyboardBuilder
+from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
+from aiogram.filters.callback_data import CallbackData
+
+from models import AgentModel
+
+
+class AgentAction(str, enum.Enum):
+    RUN_TEST = "run_test"
+    DONE = "done"
+    SHOW = "show"
+
+
+class AgentCallback(CallbackData, prefix="agent"):
+    id: int
+    action: AgentAction
 
 
 def build_global_menu():
@@ -11,16 +29,31 @@ def build_global_menu():
     return builder.as_markup()
 
 
-def build_agents_keyboard(products: list):
+def get_agents_keyboard(agents: List[AgentModel]):
+    buttons = []
+    for agent in agents:
+        buttons.append([
+            InlineKeyboardButton(
+                text=f"🤖 {agent.source_name}",
+                callback_data=AgentCallback(id=agent.id, action=AgentAction.SHOW).pack()
+            )
+        ])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def build_agent_action(agent: AgentModel) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    for index, product in enumerate(products):
-        builder.button(text=product, callback_data=f"product_{index}")
-    builder.adjust(4)
+
+    builder.button(
+        text="Запустити тест",
+        callback_data=AgentCallback(id=agent.id, action=AgentAction.RUN_TEST)
+    )
+    builder.button(
+        text="Виконаний",
+        callback_data=AgentCallback(id=agent.id, action=AgentAction.DONE)
+    )
+
+    # Вирівнюємо кнопки: 2 в один рядок (або по одній на рядок — builder.adjust(1))
+    builder.adjust(2)
+
     return builder.as_markup()
-
-
-# def build_product_action(product: list) -> InlineKeyboardMarkup:
-#     builder = InlineKeyboardBuilder()
-#     builder.button(text="Видалити товар", callback_data=f"del prod:{product}")
-#     builder.button(text="Продати товар", callback_data=f"sold prod:{product}")
-#     return builder.as_markup()
