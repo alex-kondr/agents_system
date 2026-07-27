@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 
 
 load_dotenv()
+
 engine = create_async_engine(
     os.getenv("SQLALCHEMY_URI"),
     echo=True,
@@ -48,12 +49,12 @@ class AgentModel(Base):
     end_date: Mapped[Optional[date]] = mapped_column(Date(), default=None)
     code: Mapped[Optional[str]] = mapped_column(Text(), default=None)
     count_emit: Mapped[Optional[int]] = mapped_column(default=None)
-    create_at: Mapped[datetime] = mapped_column(DateTime(), server_default=func.now())
-    update_at: Mapped[datetime] = mapped_column(DateTime(), onupdate=datetime.now())
+    create_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    update_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
 
 async def create_db():
-    async with engine.connect() as conn:
+    async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
