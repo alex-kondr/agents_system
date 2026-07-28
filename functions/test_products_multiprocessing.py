@@ -13,7 +13,7 @@ from tqdm import tqdm
 import os
 import difflib
 
-from functions.functions import load_file, get_agent_name, get_old_agent, get_end_date_agent
+from .functions import load_file, get_agent_name, get_old_agent, get_end_date_agent
 
 
 def is_include(xnames: list = [], text: str = "", lower: bool = False) -> str|None:
@@ -132,7 +132,7 @@ def calculate_code_change(old_file_path: Path, new_file_path: Path) -> tuple[int
     return added_lines, deleted_lines, percentage_ws, percentage_no_ws
 
 
-def check_code_changes(root_dir: str|None = None):
+def check_code_changes(root_dir: str = None):
     """
     Analyzes the specified directory for 'old_*' and 'new_*' file pairs and logs code changes.
     If root_dir is not provided, it will search from the project's root directory.
@@ -161,7 +161,7 @@ def check_code_changes(root_dir: str|None = None):
 
 
 class ResultParse:
-    def __init__(self, agent_id: int, session_id=0):
+    def __init__(self, agent_id: str, session_id=0):
         self.agent_id = agent_id
 
         self.date = get_end_date_agent(agent_id)
@@ -223,32 +223,30 @@ Wasted time: {self.time}
 
 
 class Product:
-    def __init__(self, agent_id: int, reload: Literal[0, 1, True, False]=False, session_id=0):
+    def __init__(self, agent_id: str, reload: Literal[0, 1, True, False]=True, session_id=0):
         self.agent_id = agent_id
         self.emits_dir = Path("product_test/emits")
-        self.emits_dir.mkdir(exist_ok=True)
+        # self.emits_dir.mkdir(exist_ok=True, parents=True)
         self.file_path = self.emits_dir / f"agent-{self.agent_id}.json"
         self.result = ResultParse(self.agent_id, session_id=session_id)
 
         # New directory for raw YAML files
         self.raw_yaml_dir = Path("product_test/raw_yamls")
-        self.raw_yaml_dir.mkdir(exist_ok=True)
+        # self.raw_yaml_dir.mkdir(exist_ok=True, parents=True)
         self.raw_yaml_path = self.raw_yaml_dir / f"agent-{self.agent_id}.yaml"
 
-        if not self.file_path.exists() or reload:
-            self.file = self.generate_file(session_id=session_id)
-        else:
-            self.file = self.open_file()
+        self.file = self.generate_file(session_id=session_id)
+
         self.agent_name = self.file["meta"]["agent_name"].strip()
 
     def generate_file(self, session_id=0) -> dict:
-        # logger.info(f"Loading YAML for agent {self.agent_id}...")
+        logger.info(f"Loading YAML for agent {self.agent_id}...")
         content = load_file(agent_id=self.agent_id, type_file="yaml", session_id=session_id, decode=True)
 
         # Save the original YAML content
-        logger.info(f"Saving original YAML content to: {self.raw_yaml_path}")
-        with open(self.raw_yaml_path, "w", encoding="utf-8") as f:
-            f.write(content)
+        # logger.info(f"Saving original YAML content to: {self.raw_yaml_path}")
+        # with open(self.raw_yaml_path, "w", encoding="utf-8") as f:
+        #     f.write(content)
 
         try:
             from yaml import CSafeLoader as Loader
@@ -260,7 +258,7 @@ class Product:
 
         # yaml.load_all розділяє файл по символам "---"
         # Кожен doc — це дані про один товар (список об'єктів у вашому випадку)
-        # logger.info("Parsing and merging YAML documents...")
+        logger.info("Parsing and merging YAML documents...")
         for doc in yaml.load_all(content, Loader=Loader):
             if not doc:
                 continue
@@ -305,20 +303,8 @@ class Product:
                 meta_data["agent_name"] = f"Agent-{self.agent_id}"
 
         file_data["meta"] = meta_data
-
-        self.save_file(file_data)
         return file_data
 
-    def open_file(self):
-        logger.info(f"Opening existing file: {self.file_path}")
-        with open(self.file_path, "r", encoding="utf-8") as fd:
-            file = json.load(fd)
-        return file
-
-    def save_file(self, file):
-        logger.info(f"Saving file to: {self.file_path}")
-        with open(self.file_path, "w", encoding="utf-8") as fd:
-            json.dump(file, fd, indent=2, ensure_ascii=False)
 
 
 class ProductValidator:
@@ -389,7 +375,7 @@ class ProductValidator:
 
         return self.errors
 
-    def test_product_name(self, xproduct_names: list[str]=[], not_xproduct_name: str|None = None, len_name: int = 6) -> None:
+    def test_product_name(self, xproduct_names: list[str]=[], not_xproduct_name: str = None, len_name: int = 6) -> None:
         xproduct_names_category = self.xproduct_names_category + xproduct_names
         if not_xproduct_name and not_xproduct_name in xproduct_names_category:
             xproduct_names_category.remove(not_xproduct_name)
@@ -637,11 +623,9 @@ def validate_product_task(args):
 
 class TestProductMultiprocessing:
     def __init__(self, product: Product):
-        Path("product_test/error").mkdir(exist_ok=True)
         self.products = product.file.get("products")
         self.agent_name = product.agent_name
         self.path = Path(f"product_test/error/{self.agent_name}")
-        self.path.mkdir(exist_ok=True)
         self.config = {}
 
     def run(self, xproduct_names=[], not_xproduct_name=None, len_name=3, xreview_title=[], xreview_conclusion=[], xreview_excerpt=[]):
@@ -661,11 +645,11 @@ class TestProductMultiprocessing:
             pbar.set_description("Step 1/3: Validating products")
             num_processes = cpu_count()
             num_products = len(self.products)
-            # logger.info(f"Starting multiprocessing with {num_processes} cores for {num_products} products.")
+            logger.info(f"Starting multiprocessing with {num_processes} cores for {num_products} products.")
 
             # Calculate a reasonable chunksize to improve performance by reducing IPC overhead.
             chunksize = max(1, num_products // (num_processes * 4))
-            # logger.info(f"Using chunksize: {chunksize} for validation.")
+            logger.info(f"Using chunksize: {chunksize} for validation.")
 
             # Create a generator of arguments to avoid creating a large intermediate list
             tasks = ((product, self.config) for product in self.products)
@@ -673,25 +657,25 @@ class TestProductMultiprocessing:
             with Pool(num_processes) as p:
                 results = list(tqdm(p.imap(validate_product_task, tasks, chunksize=chunksize), total=num_products, desc=f"Validating products (chunksize={chunksize})", leave=False))
 
-            # pool_end_time = time.time()
-            # logger.info(f"Multiprocessing validation took: {pool_end_time - run_start_time:.2f} seconds")
+            pool_end_time = time.time()
+            logger.info(f"Multiprocessing validation took: {pool_end_time - run_start_time:.2f} seconds")
             pbar.update(1)
 
             # Step 2: Aggregation
             pbar.set_description("Step 2/3: Aggregating results")
-            # agg_start_time = time.time()
-            # logger.info("Aggregating results...")
+            agg_start_time = time.time()
+            logger.info("Aggregating results...")
             aggregated_errors = defaultdict(list)
             for res in results:
                 for key, val in res.items():
                     aggregated_errors[key].extend(val)
-            # agg_end_time = time.time()
-            # logger.info(f"Result aggregation took: {agg_end_time - agg_start_time:.2f} seconds")
+            agg_end_time = time.time()
+            logger.info(f"Result aggregation took: {agg_end_time - agg_start_time:.2f} seconds")
             pbar.update(1)
 
-            # Step 3: Saving
-            pbar.set_description("Step 3/3: Saving error files")
-            # save_start_time = time.time()
+            # Step 3: Collecting results
+            pbar.set_description("Step 3/3: Collecting results")
+            save_start_time = time.time()
             error_types = [
                 ("prod_name", "product name"),
                 ("prod_category", "product category"),
@@ -708,19 +692,23 @@ class TestProductMultiprocessing:
                 ("rev_excerpt", "review excerpt"),
             ]
 
+            report_lines = []
             for key, desc in error_types:
                 errors = aggregated_errors.get(key, [])
-                logger.error(f"Count error {desc}: {len(errors)}")
-                self.save(errors, type_err=key)
+                count = len(errors)
+                logger.error(f"Count error {desc}: {count}")
+                if count > 0:
+                    report_lines.append(f"❌ {desc}: {count}")
 
-            # save_end_time = time.time()
-            # logger.info(f"Saving all error files took: {save_end_time - save_start_time:.2f} seconds")
+            save_end_time = time.time()
+            logger.info(f"Collecting results took: {save_end_time - save_start_time:.2f} seconds")
             pbar.update(1)
 
-        # total_run_time = time.time()
-        # logger.info(f"Total run time: {total_run_time - run_start_time:.2f} seconds")
+        total_run_time = time.time()
+        logger.info(f"Total run time: {total_run_time - run_start_time:.2f} seconds")
 
-    def save(self, file: list, type_err: str) -> None:
-        file_path = self.path / f"{type_err}.json"
-        with open(file_path, "w", encoding="utf-8") as fd:
-            json.dump(file, fd, indent=2, ensure_ascii=False)
+        if report_lines:
+            header = f"🔍 Перевірено {num_products} товарів за {total_run_time - run_start_time:.2f}s"
+            return header + "\n" + "\n".join(report_lines)
+        else:
+            return f"✅ Перевірено {num_products} товарів — помилок не знайдено ({total_run_time - run_start_time:.2f}s)"

@@ -6,8 +6,7 @@ from aiogram import Bot, Dispatcher, Router
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
 
-from log.log import bot_log
-from routers.agents import product_router #Імпорт роутера логіки з товарами
+from routers.agents import agent_router #Імпорт роутера логіки з товарами
 from routers.start import start_router #Імпорт роутера логіки start
 
 
@@ -17,7 +16,7 @@ load_dotenv()
 
 # Усі обробники варто закріплювати за Router або Dispatcher
 root_router = Router()
-root_router.include_routers(product_router) #Включення роутера в головний
+root_router.include_routers(agent_router) #Включення роутера в головний
 root_router.include_routers(start_router) #Включення роутера в головний
 
 

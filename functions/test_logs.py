@@ -7,7 +7,7 @@ from multiprocessing import Pool, cpu_count
 from typing import Literal
 from tqdm import tqdm
 
-from functions.functions import load_file
+from .functions import load_file
 
 
 class ColoredFormatter(logging.Formatter):
@@ -77,36 +77,20 @@ def process_log_chunk(chunk: list[str]) -> list[list[str]]:
 class LogProduct:
 
     def __init__(
-        self, agent_id: int, reload: Literal[0, 1, True, False]=False, session_id=0
+        self, agent_id: str, reload: Literal[0, 1, True, False]=True, session_id=0
     ):
         self.agent_id = agent_id
         self.emits_dir = Path("product_test/logs")
-        self.emits_dir.mkdir(exist_ok=True)
+        # self.emits_dir.mkdir(exist_ok=True, parents=True)
         self.file_path = self.emits_dir / f"agent-{self.agent_id}.json"
-
-        if not self.file_path.exists() or reload:
-            self.file = self.generate_file(session_id)
-        else:
-            logger.info(f"Opening existing log file: {self.file_path}")
-            self.file = self.open_file()
+        self.file = self.generate_file(session_id)
 
     def generate_file(self, session_id=0) -> list:
         logger.info(f"Getting logs for agent {self.agent_id}...")
         content = load_file(agent_id=self.agent_id, type_file="log", decode=True, session_id=session_id)
         content_list = content.split("\n")
-        logger.info(f"Get logs complete ({len(content_list)} lines). Saving logs...")
-        self.save_file(content_list)
-        logger.info("Logs saved successfully.")
+        logger.info(f"Get logs complete ({len(content_list)} lines).")
         return content_list
-
-    def open_file(self):
-        with open(self.file_path, "r", encoding="utf-8") as fd:
-            file = json.load(fd)
-        return file
-
-    def save_file(self, file):
-        with open(self.file_path, "w", encoding="utf-8") as fd:
-            json.dump(file, fd, indent=2)
 
 
 class TestLogProduct:
@@ -114,13 +98,13 @@ class TestLogProduct:
     def __init__(self, log_product: LogProduct):
         self.log_product = log_product
         self.path = Path(f"product_test/error/log-{self.log_product.agent_id}")
-        self.path.mkdir(exist_ok=True)
+        # self.path.mkdir(exist_ok=True)
 
     def test_log(self):
         log_lines = self.log_product.file
         if not log_lines:
             logger.warning("Log file is empty, skipping test.")
-            return
+            return "⚠️ Лог-файл порожній, аналіз пропущено."
 
         num_processes = cpu_count()
         chunk_size = max(1000, len(log_lines) // (num_processes * 2))
@@ -147,12 +131,9 @@ class TestLogProduct:
         # Тільки "MAKING" помилки
         logger.error(f"Find error in logs MAKING: {len(making_errors)}")
 
-        # Зберігаємо все разом або лише стандартні (за вашим бажанням)
-        # Якщо потрібно зберегти все:
-        self.save(error_log)
-
-    def save(self, error_log: list):
-        file_path = self.path / "log.json"
-        logger.info(f"Saving error log to: {file_path}")
-        with open(file_path, "w", encoding="utf-8") as fd:
-            json.dump(error_log, fd, indent=2)
+        report_lines = [
+            f"📝 Проаналізовано {len(log_lines)} рядків логу",
+            f"❌ Помилки в логах: {len(standard_errors)}",
+            f"❌ Помилки MAKING: {len(making_errors)}",
+        ]
+        return "\n".join(report_lines)

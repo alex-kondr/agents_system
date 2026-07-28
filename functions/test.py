@@ -1,22 +1,14 @@
-import sys
-import os
+from test_products_multiprocessing import Product, TestProductMultiprocessing, check_code_changes
+from test_logs import LogProduct, TestLogProduct
 
 
-current = os.path.dirname(os.path.realpath(__file__))
-parent = os.path.dirname(current)
-sys.path.append(parent)
 
-
-from product_test.test_products_multiprocessing import Product, TestProductMultiprocessing, check_code_changes
-from product_test.test_logs import LogProduct, TestLogProduct
-import product_test.list_of_agents as agents
-
-
-agent = agents.BUYMOBILE_AU
+agent = "20076"
 # agent = agents.TEST
 reload = 1
 session_id = 0
 
+# excerpt: 5
 
 if __name__ == "__main__":
     product = Product(agent, reload=reload, session_id=session_id)
@@ -28,4 +20,4 @@ if __name__ == "__main__":
     test_log = TestLogProduct(log)
     test_log.test_log()
 
-    check_code_changes(__file__)
+    # check_code_changes(__file__)
