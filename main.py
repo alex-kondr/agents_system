@@ -35,5 +35,4 @@ async def main() -> None:
 
 # Точка входу
 if __name__ == "__main__":
-   # bot_log()
    asyncio.run(main())

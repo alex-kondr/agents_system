@@ -348,14 +348,10 @@ class ProductValidator:
             len_name=config.get('len_name', 3)
         )
         self.test_product_category(config.get('xproduct_names', []))
-        self.test_product_sku()
-        self.test_product_id_manufacturer()
-        self.test_product_ean_gtin()
         self.test_review_title(config.get('xreview_title', []))
         self.test_review_date()
         self.test_review_grade()
         self.test_review_author()
-        self.test_review_award()
         self.test_review_pros_cons()
         self.test_review_conclusion(config.get('xreview_conclusion', []))
         self.test_review_excerpt(
@@ -429,35 +425,6 @@ class ProductValidator:
 
             if temp_cat:
                 self.errors["prod_category"].append(property.get('_parent_props', []))
-
-    def test_product_sku(self):
-        sku_props = self.product_map.get("product.id.sku")
-        if not sku_props: return
-        for property in sku_props:
-            sku_value = property.get("value")
-            if sku_value and len(sku_value) < 2:
-                self.errors["prod_sku"].append(property.get('_parent_props', []))
-
-    def test_product_id_manufacturer(self):
-        id_manufacturer_props = self.product_map.get("product.id.manufacturer")
-        if not id_manufacturer_props:
-            # Якщо взагала немає виробника, беремо властивості продукту для звіту
-            prod_props = self.product_map.get("product.name", [{}])[0].get('_parent_props', [])
-            self.errors["prod_id_manufacturer"].append(prod_props)
-            return
-
-        for property in id_manufacturer_props:
-            val = property.get("value")
-            if not val or len(val) < 2:
-                self.errors["prod_id_manufacturer"].append(property.get('_parent_props', []))
-
-    def test_product_ean_gtin(self):
-        ean_props = self.product_map.get("product.id.ean")
-        if not ean_props: return
-        for property in ean_props:
-            ean_value = property.get("value")
-            if ean_value and (len(str(ean_value)) < 11 or not str(ean_value).isdigit()):
-                self.errors["prod_ean"].append(property.get('_parent_props', []))
 
     def test_review_title(self, xreview_title: list[str]=[]) -> None:
         xreview_title = self.xreview_title + xreview_title
