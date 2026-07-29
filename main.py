@@ -16,7 +16,7 @@ load_dotenv()
 
 TOKEN = os.getenv("TELEGRAM_API")
 WEBHOOK_PATH = f"/bot/{TOKEN}"
-WEBHOOK_URL = os.getenv("RENDER_EXTERNAL_URL") + WEBHOOK_PATH  # Render сам надає RENDER_EXTERNAL_URL
+WEBHOOK_URL = os.getenv("KOYEB_EXTERNAL_URL") + WEBHOOK_PATH  # Render сам надає RENDER_EXTERNAL_URL
 
 bot = Bot(token=TOKEN, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
 dp = Dispatcher()
