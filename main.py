@@ -60,6 +60,11 @@ async def on_startup():
             return
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
 @app.post(WEBHOOK_PATH)
 async def bot_webhook(request: Request):
     # Отримуємо оновлення від Telegram
