@@ -67,7 +67,7 @@ def load_file(agent_id: int, type_file: str = "yaml", size: int|str = "", decode
         url,
         verify=False,
         auth=HTTPBasicAuth(
-            username=os.getenv("USER-NAME"),
+            username=os.getenv("USER_NAME"),
             password=os.getenv("PASS")
         ),
         stream=True
@@ -103,7 +103,7 @@ def get_old_agent(agent_id: str):
         url,
         verify=False,
         auth=HTTPBasicAuth(
-            username=os.getenv("USER-NAME"),
+            username=os.getenv("USER_NAME"),
             password=os.getenv("PASS")
         )
     )
@@ -134,7 +134,7 @@ def get_source_name(agent_id):
         url,
         verify=False,
         auth=HTTPBasicAuth(
-            username=os.getenv("USER-NAME"),
+            username=os.getenv("USER_NAME"),
             password=os.getenv("PASS")
         )
     )
@@ -156,7 +156,7 @@ def upload_code(agent_id, code, run: bool = True):
         data=payload,
         verify=False,
         auth=HTTPBasicAuth(
-            username=os.getenv("USER-NAME"),
+            username=os.getenv("USER_NAME"),
             password=os.getenv("PASS")
         ),
         stream=True
@@ -176,7 +176,7 @@ def get_end_date_agent(agent_id) -> Optional[str]:
         url,
         verify=False,
         auth=HTTPBasicAuth(
-            username=os.getenv("USER-NAME"),
+            username=os.getenv("USER_NAME"),
             password=os.getenv("PASS")
         )
     )
