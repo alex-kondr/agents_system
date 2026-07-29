@@ -5,6 +5,7 @@ import asyncio
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.enums import ParseMode
 from aiogram.client.default import DefaultBotProperties
+from aiogram.exceptions import TelegramBadRequest, TelegramRetryAfter
 from fastapi import FastAPI, Request
 
 from routers.agents import agent_router #Імпорт роутера логіки з товарами
@@ -33,7 +34,13 @@ dp.include_router(root_router)
 @app.on_event("startup")
 async def on_startup():
     # Реєструємо Webhook у Telegram при запуску
-    await bot.set_webhook(url=WEBHOOK_URL)
+    try:
+        await bot.set_webhook(url=WEBHOOK_URL)
+    except TelegramRetryAfter as e:
+        print(f"Flood limit hit, retry in {e.retry_after} seconds")
+    except TelegramBadRequest as e:
+        print(f"Telegram bad request: {e}")
+
 
 @app.post(WEBHOOK_PATH)
 async def bot_webhook(request: Request):
