@@ -32,16 +32,16 @@ root_router.include_routers(start_router) #Включення роутера в 
 dp.include_router(root_router)
 
 
-@app.on_event("startup")
-async def on_startup():
-    try:
-        current_webhook = await bot.get_webhook_info()
-        if current_webhook.url != WEBHOOK_URL:
-            await bot.set_webhook(url=WEBHOOK_URL, drop_pending_updates=True)
-    except TelegramRetryAfter as e:
-        logger.warning(f"Telegram flood limit: потрібно зачекати {e.retry_after} сек. Пропускаємо старт вебхука.")
-    except Exception as e:
-        logger.error(f"Не вдалося встановити Webhook при старті: {e}")
+# @app.on_event("startup")
+# async def on_startup():
+#     try:
+#         current_webhook = await bot.get_webhook_info()
+#         if current_webhook.url != WEBHOOK_URL:
+#             await bot.set_webhook(url=WEBHOOK_URL, drop_pending_updates=True)
+#     except TelegramRetryAfter as e:
+#         logger.warning(f"Telegram flood limit: потрібно зачекати {e.retry_after} сек. Пропускаємо старт вебхука.")
+#     except Exception as e:
+#         logger.error(f"Не вдалося встановити Webhook при старті: {e}")
 
 
 @app.post(WEBHOOK_PATH)
