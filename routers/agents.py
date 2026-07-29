@@ -195,3 +195,21 @@ async def agent_set_done(callback: CallbackQuery, callback_data: AgentCallback, 
         "Оберіть наступну дію:",
         reply_markup=build_agent_action(agent),
     )
+
+
+@agent_router.callback_query(AgentCallback.filter(F.action == AgentAction.QC))
+async def agent_set_qc(callback: CallbackQuery, callback_data: AgentCallback, session: AsyncSession) -> None:
+    result = await session.execute(
+        select(AgentModel).filter_by(id=callback_data.id)
+    )
+    agent = result.scalar_one()
+    agent.status = Status.qc
+    await session.commit()
+    await callback.message.answer(
+        f"Агент <b>{agent.source_name}</b> відмічено як QC.",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    await callback.message.answer(
+        "Оберіть наступну дію:",
+        reply_markup=build_agent_action(agent),
+    )

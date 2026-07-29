@@ -13,6 +13,7 @@ class AgentAction(str, enum.Enum):
     RUN_TEST = "run_test"
     DONE = "done"
     SHOW = "show"
+    QC = "qc"
 
 
 class AgentCallback(CallbackData, prefix="agent"):
@@ -51,6 +52,10 @@ def build_agent_action(agent: AgentModel) -> InlineKeyboardMarkup:
     builder.button(
         text="Виконаний",
         callback_data=AgentCallback(id=agent.id, action=AgentAction.DONE)
+    )
+    builder.button(
+        text="QC",
+        callback_data=AgentCallback(id=agent.id, action=AgentAction.QC)
     )
 
     # Вирівнюємо кнопки: 2 в один рядок (або по одній на рядок — builder.adjust(1))
