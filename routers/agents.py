@@ -213,3 +213,17 @@ async def agent_set_qc(callback: CallbackQuery, callback_data: AgentCallback, se
         "Оберіть наступну дію:",
         reply_markup=build_agent_action(agent),
     )
+
+
+# @agent_router.message(F.text == "Перевірити статус")
+# async def check_all_agents(message: Message, state: FSMContext, session: AsyncSession) -> None:
+#     async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
+#         result = await session.execute(
+#             select(AgentModel).filter_by(status=Status.running)
+#         )
+#         agents = result.scalars().all()
+#         keyboard = get_agents_keyboard(agents)
+#         await message.answer(
+#             "Список агентів",
+#             reply_markup=keyboard
+#         )

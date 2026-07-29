@@ -182,8 +182,8 @@ def get_end_date_agent(agent_id) -> Optional[str]:
     )
     date = response.html.xpath('(//td)[1]/parent::*/td[4]/text()')[0].strip()
     if date == 'None':
-        error = response.html.xpath('(//td)[1]/parent::*/td[16]/text()')[0]
-        emit_count = response.html.xpath('(//td)[1]/parent::*/td[8]/text()')[0]
+        error = response.html.xpath('(//td)[1]/parent::*/td[16]/text()')[0].strip()
+        emit_count = response.html.xpath('(//td)[1]/parent::*/td[8]/text()')[0].strip()
         raise ValueError(f"{error = }\n{emit_count = }\nNot end")
 
     return datetime.fromisoformat(date).replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Europe/Kyiv")).strftime("%d.%m.%Y %H:%M")
