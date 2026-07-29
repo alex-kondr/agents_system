@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 import os
-import asyncio
+import logging
 
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.enums import ParseMode
@@ -14,6 +14,7 @@ from routers.start import start_router #Імпорт роутера логіки
 
 # Завантажимо дані середовища з файлу .env(За замовчуванням)
 load_dotenv()
+logger = logging.getLogger(__name__)
 
 TOKEN = os.getenv("TELEGRAM_API")
 WEBHOOK_PATH = f"/bot/{TOKEN}"
@@ -33,13 +34,14 @@ dp.include_router(root_router)
 
 @app.on_event("startup")
 async def on_startup():
-    # Реєструємо Webhook у Telegram при запуску
     try:
-        await bot.set_webhook(url=WEBHOOK_URL)
+        current_webhook = await bot.get_webhook_info()
+        if current_webhook.url != WEBHOOK_URL:
+            await bot.set_webhook(url=WEBHOOK_URL, drop_pending_updates=True)
     except TelegramRetryAfter as e:
-        print(f"Flood limit hit, retry in {e.retry_after} seconds")
-    except TelegramBadRequest as e:
-        print(f"Telegram bad request: {e}")
+        logger.warning(f"Telegram flood limit: потрібно зачекати {e.retry_after} сек. Пропускаємо старт вебхука.")
+    except Exception as e:
+        logger.error(f"Не вдалося встановити Webhook при старті: {e}")
 
 
 @app.post(WEBHOOK_PATH)
