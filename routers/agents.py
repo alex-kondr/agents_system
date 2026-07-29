@@ -152,6 +152,16 @@ async def agent_run_action(callback: CallbackQuery, callback_data: AgentCallback
             await callback.message.answer(
                 f"<b>📋 Результати аналізу логів:</b>\n<pre>{test_log_result}</pre>"
             )
+
+            agent.count_emit = product.result.emitted
+            await session.commit()
+        except ValueError as e:
+            # get_end_date_agent кидає ValueError коли дата == 'None' (агент ще не завершив роботу)
+            # Відправляємо помилку в Telegram і зупиняємо тест, але сервіс продовжує працювати
+            await callback.message.answer(
+                f"⚠️ <b>Тест зупинено:</b>\n<pre>{e}</pre>"
+            )
+            return
         finally:
             # --- Прибираємо handler та зупиняємо consumer ---
             stop_event.set()
@@ -167,3 +177,21 @@ async def agent_run_action(callback: CallbackQuery, callback_data: AgentCallback
             "Оберіть наступну дію:",
             reply_markup=build_agent_action(agent),
         )
+
+
+@agent_router.callback_query(AgentCallback.filter(F.action == AgentAction.DONE))
+async def agent_set_done(callback: CallbackQuery, callback_data: AgentCallback, session: AsyncSession) -> None:
+    result = await session.execute(
+        select(AgentModel).filter_by(id=callback_data.id)
+    )
+    agent = result.scalar_one()
+    agent.done = True
+    await session.commit()
+    await callback.message.answer(
+        f"Агент <b>{agent.source_name}</b> відмічено як виконаний.",
+        reply_markup=ReplyKeyboardRemove()
+    )
+    await callback.message.answer(
+        "Оберіть наступну дію:",
+        reply_markup=build_agent_action(agent),
+    )
