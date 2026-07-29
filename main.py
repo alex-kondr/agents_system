@@ -1,6 +1,7 @@
 from dotenv import load_dotenv
 import os
 import logging
+import asyncio
 
 from aiogram import Bot, Dispatcher, Router, types
 from aiogram.enums import ParseMode
@@ -32,16 +33,31 @@ root_router.include_routers(start_router) #Включення роутера в 
 dp.include_router(root_router)
 
 
-# @app.on_event("startup")
-# async def on_startup():
-#     try:
-#         current_webhook = await bot.get_webhook_info()
-#         if current_webhook.url != WEBHOOK_URL:
-#             await bot.set_webhook(url=WEBHOOK_URL, drop_pending_updates=True)
-#     except TelegramRetryAfter as e:
-#         logger.warning(f"Telegram flood limit: потрібно зачекати {e.retry_after} сек. Пропускаємо старт вебхука.")
-#     except Exception as e:
-#         logger.error(f"Не вдалося встановити Webhook при старті: {e}")
+@app.on_event("startup")
+async def on_startup():
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            current_webhook = await bot.get_webhook_info()
+            if current_webhook.url == WEBHOOK_URL:
+                logger.info("Webhook вже встановлений, пропускаємо set_webhook.")
+                return
+            await bot.set_webhook(url=WEBHOOK_URL, drop_pending_updates=True)
+            logger.info("Webhook успішно встановлено.")
+            return
+        except TelegramRetryAfter as e:
+            wait = e.retry_after + 1  # +1 сек запас
+            logger.warning(
+                f"Telegram flood limit (спроба {attempt+1}/{max_retries}): "
+                f"чекаємо {wait} сек..."
+            )
+            if attempt < max_retries - 1:
+                await asyncio.sleep(wait)
+            else:
+                logger.error("Вичерпано ліміт спроб встановлення webhook.")
+        except Exception as e:
+            logger.error(f"Не вдалося встановити Webhook при старті: {e}")
+            return
 
 
 @app.post(WEBHOOK_PATH)
