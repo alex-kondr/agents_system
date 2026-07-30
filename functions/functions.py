@@ -210,6 +210,7 @@ def get_status_agent(agent_id) -> Optional[str]:
     if date != 'None':
         date = datetime.fromisoformat(date).replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Europe/Kyiv")).strftime("%d.%m.%Y %H:%M")
 
+    logger.info(f"Зроблено запит до ресурсу: статус {response.status_code}")
     return {
         "end_date": date,
         "emit_count": emit_count,
