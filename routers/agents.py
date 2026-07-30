@@ -4,7 +4,7 @@ import logging
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
-from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
+from aiogram.types import Message, CallbackQuery
 from aiogram.utils.chat_action import ChatActionSender
 from aiogram.exceptions import TelegramBadRequest
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -104,7 +104,6 @@ async def show_agent_action(callback: CallbackQuery, callback_data: AgentCallbac
         agent = result.scalar_one()
         await callback.message.answer(
             f"{agent.source_name}-{agent.status.name}",
-            reply_markup=ReplyKeyboardRemove()  # Прибере звичайні кнопки
         )
         await callback.message.answer(
             "Оберіть дію:",
@@ -180,7 +179,6 @@ async def agent_run_action(callback: CallbackQuery, callback_data: AgentCallback
 
         await callback.message.answer(
             f"Тести завершено.\n{agent.source_name}-{agent.status.name}",
-            reply_markup=ReplyKeyboardRemove()
         )
         await callback.message.answer(
             "Оберіть наступну дію:",
@@ -198,7 +196,6 @@ async def agent_set_done(callback: CallbackQuery, callback_data: AgentCallback, 
     await session.commit()
     await callback.message.answer(
         f"Агент <b>{agent.source_name}</b> відмічено як виконаний.",
-        reply_markup=ReplyKeyboardRemove()
     )
     await callback.message.answer(
         "Оберіть наступну дію:",
@@ -216,7 +213,6 @@ async def agent_set_qc(callback: CallbackQuery, callback_data: AgentCallback, se
     await session.commit()
     await callback.message.answer(
         f"Агент <b>{agent.source_name}</b> відмічено як QC.",
-        reply_markup=ReplyKeyboardRemove()
     )
     await callback.message.answer(
         "Оберіть наступну дію:",
