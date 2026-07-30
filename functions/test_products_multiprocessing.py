@@ -1,16 +1,17 @@
 from typing import Literal
-
-import yaml
-import json
+from zoneinfo import ZoneInfo
+from datetime import datetime
 import logging
 import sys
 from pathlib import Path
 import time
 import re
 from multiprocessing import Pool, cpu_count
-from collections import defaultdict
-from tqdm import tqdm
 import os
+from collections import defaultdict
+
+import yaml
+from tqdm import tqdm
 import difflib
 
 from .functions import load_file, get_agent_name, get_old_agent, get_end_date_agent
@@ -82,7 +83,16 @@ class ColoredFormatter(logging.Formatter):
 logger = logging.getLogger("ProductTestMulti")
 logger.setLevel(logging.DEBUG)
 handler = logging.StreamHandler(sys.stdout)
-handler.setFormatter(ColoredFormatter("%(asctime)s - %(levelname)s - %(message)s", datefmt="%H:%M:%S"))
+formatter = ColoredFormatter(
+    "%(asctime)s - %(levelname)s - %(message)s",
+    datefmt="%H:%M:%S"
+)
+# Перевизначаємо конвертер часу для цього форматера на Київський часовий пояс
+formatter.converter = lambda timestamp: datetime.fromtimestamp(
+    timestamp,
+    tz=ZoneInfo("Europe/Kyiv")
+).timetuple()
+handler.setFormatter(formatter)
 logger.addHandler(handler)
 # -----------------------------------------
 
