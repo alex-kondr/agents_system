@@ -189,3 +189,33 @@ def get_end_date_agent(agent_id) -> Optional[str]:
     return datetime.fromisoformat(date).replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Europe/Kyiv")).strftime("%d.%m.%Y %H:%M")
 
 
+def get_status_agent(agent_id) -> Optional[str]:
+    url = f"https://prunesearch.com/manage?action=sessions&agent_id={agent_id}"
+
+    session = HTMLSession()
+    response = session.get(
+        url,
+        verify=False,
+        auth=HTTPBasicAuth(
+            username=os.getenv("USER_NAME"),
+            password=os.getenv("PASS")
+        )
+    )
+    emit_count = response.html.xpath('(//td)[1]/parent::*/td[8]/text()')[0].strip()
+    errors_count = response.html.xpath('(//td)[1]/parent::*/td[9]/text()')[0].strip()
+    jobs_in_queue = response.html.xpath('(//td)[1]/parent::*/td[12]/text()')[0].strip()
+    requests_count = response.html.xpath('(//td)[1]/parent::*/td[13]/text()')[0].strip()
+    error = response.html.xpath('(//td)[1]/parent::*/td[16]/text()')[0].strip()
+    date = response.html.xpath('(//td)[1]/parent::*/td[4]/text()')[0].strip()
+    if date != 'None':
+        date = datetime.fromisoformat(date).replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Europe/Kyiv")).strftime("%d.%m.%Y %H:%M")
+
+    return {
+        "end_date": date,
+        "emit_count": emit_count,
+        "errors_count": errors_count,
+        "jobs_in_queue": jobs_in_queue,
+        "requests_count": requests_count,
+        "error": error,
+    }
+

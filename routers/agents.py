@@ -1,3 +1,7 @@
+import asyncio
+import queue
+import logging
+
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
 from aiogram.types import Message, CallbackQuery, ReplyKeyboardRemove
@@ -6,15 +10,12 @@ from aiogram.exceptions import TelegramBadRequest
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-import asyncio
-import queue
-import logging
-
 from keyboards.agents import get_agents_keyboard, AgentCallback, AgentAction, build_agent_action
 from models import AgentModel, async_session, Status
 from middleware import DbSessionMiddleware
 from functions.test_products_multiprocessing import Product, TestProductMultiprocessing
 from functions.test_logs import LogProduct, TestLogProduct
+from functions.functions import get_status_agent
 
 
 agent_router = Router()
@@ -215,15 +216,27 @@ async def agent_set_qc(callback: CallbackQuery, callback_data: AgentCallback, se
     )
 
 
-# @agent_router.message(F.text == "Перевірити статус")
-# async def check_all_agents(message: Message, state: FSMContext, session: AsyncSession) -> None:
-#     async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
-#         result = await session.execute(
-#             select(AgentModel).filter_by(status=Status.running)
-#         )
-#         agents = result.scalars().all()
-#         keyboard = get_agents_keyboard(agents)
-#         await message.answer(
-#             "Список агентів",
-#             reply_markup=keyboard
-#         )
+@agent_router.message(F.text == "Перевірити статус")
+async def check_all_agents(message: Message, state: FSMContext, session: AsyncSession) -> None:
+    async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
+        result = await session.execute(
+            select(AgentModel).filter_by(status=Status.running)
+        )
+        agents = result.scalars().all()
+
+    for agent in agents:
+        status = await asyncio.to_thread(get_status_agent, agent.agent_id)
+        await message.answer(
+            f"🤖 <b>{agent.source_name}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━\n"
+            f"Стан: {status.get('jobs_in_queue')}\n"
+            f"📅 <b>Дата:</b> <code>{status.get('end_date')}</code>\n"
+            f"📤 <b>Відправлено:</b> <code>{status.get('emit_count')}</code>\n"
+            f"⚠️ <b>Помилки:</b> <code>{status.get('errors_count')}</code>\n"
+            f"📡 <b>Запити:</b> <code>{status.get('requests_count')}</code>\n"
+            f"❌ <b>Помилка:</b> <code>{status['error']}</code>\n"
+            f"━━━━━━━━━━━━━━━━━━\n",
+            parse_mode="HTML",
+            reply_markup=build_agent_action(agent)
+        )
+

@@ -27,7 +27,11 @@ def build_global_menu():
     builder.button(text="Додати нового агента")
     builder.button(text="Перевірити статус")
     builder.adjust(1)
-    return builder.as_markup()
+    return builder.as_markup(
+        resize_keyboard=True,       # Підганяє розмір кнопок під екран (щоб не були величезними)
+        is_persistent=True,         # Меню залишається видимим навіть при згортанні/перезапуску
+        input_field_placeholder="Оберіть дію з меню..."
+    )
 
 
 def get_agents_keyboard(agents: List[AgentModel]):
@@ -58,7 +62,5 @@ def build_agent_action(agent: AgentModel) -> InlineKeyboardMarkup:
         callback_data=AgentCallback(id=agent.id, action=AgentAction.QC)
     )
 
-    # Вирівнюємо кнопки: 2 в один рядок (або по одній на рядок — builder.adjust(1))
-    builder.adjust(2)
-
+    builder.adjust(3)
     return builder.as_markup()
