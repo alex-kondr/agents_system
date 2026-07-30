@@ -237,7 +237,7 @@ async def check_all_agents(message: Message, state: FSMContext, session: AsyncSe
         f"Всього запущених агентів: <code>{len(agents)}</code>"
     )
     for agent in agents:
-        status = await asyncio.to_thread(get_status_agent, agent.agent_id)
+        status = get_status_agent(agent.agent_id)
         await message.answer(
             f"🤖 <b>{agent.source_name}</b>\n"
             f"━━━━━━━━━━━━━━━━━━\n"
