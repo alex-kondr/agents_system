@@ -38,18 +38,16 @@ async def on_startup():
     max_retries = 3
     for attempt in range(max_retries):
         try:
-            current_webhook = await bot.get_webhook_info()
-            if current_webhook.url == WEBHOOK_URL:
-                logger.info("Webhook вже встановлений, пропускаємо set_webhook.")
-                return
-            await bot.set_webhook(url=WEBHOOK_URL, drop_pending_updates=True)
-            logger.info("Webhook успішно встановлено.")
+            # Спершу скидаємо старі застряглі оновлення та реєструємо Webhook заново
+            await bot.delete_webhook(drop_pending_updates=True)
+            await bot.set_webhook(url=WEBHOOK_URL)
+
+            logger.info("Webhook та старі оновлення успішно скинуті/встановлені.")
             return
         except TelegramRetryAfter as e:
-            wait = e.retry_after + 1  # +1 сек запас
+            wait = e.retry_after + 1
             logger.warning(
-                f"Telegram flood limit (спроба {attempt+1}/{max_retries}): "
-                f"чекаємо {wait} сек..."
+                f"Telegram flood limit (спроба {attempt+1}/{max_retries}): чекаємо {wait} сек..."
             )
             if attempt < max_retries - 1:
                 await asyncio.sleep(wait)

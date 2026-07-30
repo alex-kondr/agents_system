@@ -226,6 +226,9 @@ async def agent_set_qc(callback: CallbackQuery, callback_data: AgentCallback, se
 
 @agent_router.message(F.text == "Перевірити статус")
 async def check_all_agents(message: Message, state: FSMContext, session: AsyncSession) -> None:
+    # 1. Скидаємо стан FSM, якщо користувач був у процесі введення чогось
+    await state.clear()
+
     async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
         result = await session.execute(
             select(AgentModel).filter_by(status=Status.running)
@@ -234,24 +237,40 @@ async def check_all_agents(message: Message, state: FSMContext, session: AsyncSe
 
         await message.answer(
             f"<b>Перевірка статусу всіх агентів</b>\n"
-            f"Всього запущених агентів: <code>{len(agents)}</code>"
+            f"Всього запущених агентів: <code>{len(agents)}</code>",
+            parse_mode="HTML"
         )
+
         for agent in agents:
-            status = get_status_agent(agent.agent_id)
-            await message.answer(
+            # 2. КРИТИЧНО: Виконуємо синхронний запит у окремому потоці,
+            # щоб не блокувати асинхронний Event Loop aiogram
+            try:
+                status = await asyncio.to_thread(get_status_agent, agent.agent_id)
+            except Exception as e:
+                status = {"error": str(e)}
+
+            # 3. Безпечно витягуємо error через .get()
+            error_text = status.get('error')
+            error_display = f"<code>{error_text}</code>" if error_text else "Немає"
+
+            text = (
                 f"🤖 <b>{agent.source_name}</b>\n"
                 f"━━━━━━━━━━━━━━━━━━\n"
-                f"📅 <b>Дата:</b> <code>{status.get('end_date')}</code>\n"
-                f"📤 <b>Відправлено:</b> <code>{status.get('emit_count')}</code>\n"
-                f"⚠️ <b>Помилки:</b> <code>{status.get('errors_count')}</code>\n"
-                f"⏳ <b>Черга:</b> <code>{status.get('jobs_in_queue')}</code>\n"
-                f"📡 <b>Запити:</b> <code>{status.get('requests_count')}</code>\n"
-                f"❌ <b>Помилка:</b> <code>{status['error']}</code>\n"
-                f"━━━━━━━━━━━━━━━━━━\n",
+                f"📅 <b>Дата:</b> <code>{status.get('end_date', '—')}</code>\n"
+                f"📤 <b>Відправлено:</b> <code>{status.get('emit_count', 0)}</code>\n"
+                f"⚠️ <b>Помилки:</b> <code>{status.get('errors_count', 0)}</code>\n"
+                f"⏳ <b>Черга:</b> <code>{status.get('jobs_in_queue', 0)}</code>\n"
+                f"📡 <b>Запити:</b> <code>{status.get('requests_count', 0)}</code>\n"
+                f"❌ <b>Помилка:</b> {error_display}\n"
+                f"━━━━━━━━━━━━━━━━━━"
+            )
+
+            await message.answer(
+                text,
                 parse_mode="HTML",
                 reply_markup=build_agent_action(agent)
             )
 
-        await message.answer("Перевірка завершена")
+        await message.answer("Перевірка завершена.")
 
 
