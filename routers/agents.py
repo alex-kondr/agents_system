@@ -232,26 +232,26 @@ async def check_all_agents(message: Message, state: FSMContext, session: AsyncSe
         )
         agents = result.scalars().all()
 
-    await message.answer(
-        f"<b>Перевірка статусу всіх агентів</b>\n"
-        f"Всього запущених агентів: <code>{len(agents)}</code>"
-    )
-    for agent in agents:
-        status = get_status_agent(agent.agent_id)
         await message.answer(
-            f"🤖 <b>{agent.source_name}</b>\n"
-            f"━━━━━━━━━━━━━━━━━━\n"
-            f"📅 <b>Дата:</b> <code>{status.get('end_date')}</code>\n"
-            f"📤 <b>Відправлено:</b> <code>{status.get('emit_count')}</code>\n"
-            f"⚠️ <b>Помилки:</b> <code>{status.get('errors_count')}</code>\n"
-            f"⏳ <b>Черга:</b> <code>{status.get('jobs_in_queue')}</code>\n"
-            f"📡 <b>Запити:</b> <code>{status.get('requests_count')}</code>\n"
-            f"❌ <b>Помилка:</b> <code>{status['error']}</code>\n"
-            f"━━━━━━━━━━━━━━━━━━\n",
-            parse_mode="HTML",
-            reply_markup=build_agent_action(agent)
+            f"<b>Перевірка статусу всіх агентів</b>\n"
+            f"Всього запущених агентів: <code>{len(agents)}</code>"
         )
+        for agent in agents:
+            status = get_status_agent(agent.agent_id)
+            await message.answer(
+                f"🤖 <b>{agent.source_name}</b>\n"
+                f"━━━━━━━━━━━━━━━━━━\n"
+                f"📅 <b>Дата:</b> <code>{status.get('end_date')}</code>\n"
+                f"📤 <b>Відправлено:</b> <code>{status.get('emit_count')}</code>\n"
+                f"⚠️ <b>Помилки:</b> <code>{status.get('errors_count')}</code>\n"
+                f"⏳ <b>Черга:</b> <code>{status.get('jobs_in_queue')}</code>\n"
+                f"📡 <b>Запити:</b> <code>{status.get('requests_count')}</code>\n"
+                f"❌ <b>Помилка:</b> <code>{status['error']}</code>\n"
+                f"━━━━━━━━━━━━━━━━━━\n",
+                parse_mode="HTML",
+                reply_markup=build_agent_action(agent)
+            )
 
-    await message.answer("Перевірка завершена")
+        await message.answer("Перевірка завершена")
 
 
