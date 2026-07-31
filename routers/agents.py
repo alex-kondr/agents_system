@@ -1,6 +1,7 @@
 import asyncio
 import queue
 import logging
+from datetime import datetime
 
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
@@ -78,16 +79,44 @@ async def _consume_log_queue(
 
 # ---------- Handlers ----------
 
-@agent_router.message(F.text == "Список агентів")
+@agent_router.message(F.text == "Список агентів цього місяця 🚀")
 async def show_all_agents(message: Message, state: FSMContext, session: AsyncSession) -> None:
     async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
         result = await session.execute(
-            select(AgentModel).filter_by(status=Status.running)
+            select(AgentModel).filter(AgentModel.update_at.month() == datetime.now().month)
         )
         agents = result.scalars().all()
         keyboard = get_agents_keyboard(agents)
         await message.answer(
-            "Список агентів",
+            f"Всього агентів цього місяця: {len(agents)}",
+            reply_markup=keyboard
+        )
+
+
+@agent_router.message(F.text == "Список агентів в роботі ⏳")
+async def show_all_agents_running(message: Message, state: FSMContext, session: AsyncSession) -> None:
+    async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
+        result = await session.execute(
+            select(AgentModel).filter(AgentModel.update_at.month() == datetime.now().month, AgentModel.status == Status.in_progress)
+        )
+        agents = result.scalars().all()
+        keyboard = get_agents_keyboard(agents)
+        await message.answer(
+            f"Всього агентів в роботі: {len(agents)}",
+            reply_markup=keyboard
+        )
+
+
+@agent_router.message(F.text == "Список запущених 🏁")
+async def show_all_agents_launched(message: Message, state: FSMContext, session: AsyncSession) -> None:
+    async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
+        result = await session.execute(
+            select(AgentModel).filter(AgentModel.update_at.month() == datetime.now().month, AgentModel.status == Status.running)
+        )
+        agents = result.scalars().all()
+        keyboard = get_agents_keyboard(agents)
+        await message.answer(
+            f"Всього запущених агентів: {len(agents)}",
             reply_markup=keyboard
         )
 
@@ -220,7 +249,7 @@ async def agent_set_qc(callback: CallbackQuery, callback_data: AgentCallback, se
     )
 
 
-@agent_router.message(F.text == "Перевірити статус")
+@agent_router.message(F.text == "Перевірити всі запущені агенти 🔍")
 async def check_all_agents(message: Message, state: FSMContext, session: AsyncSession) -> None:
     # 1. Скидаємо стан FSM, якщо користувач був у процесі введення чогось
     await state.clear()

@@ -49,6 +49,7 @@ class AgentModel(Base):
     group: Mapped[str] = mapped_column(String(255), nullable=True, default=None)
     status: Mapped[Status] = mapped_column(Enum(Status), default=Status.in_progress)
     done: Mapped[bool] = mapped_column(Boolean(), default=False)
+    bb: Mapped[bool] = mapped_column(Boolean(), default=False)
     end_date: Mapped[Optional[date]] = mapped_column(Date(), default=None)
     code: Mapped[Optional[str]] = mapped_column(Text(), default=None)
     count_emit: Mapped[Optional[int]] = mapped_column(default=None)
