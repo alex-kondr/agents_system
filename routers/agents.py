@@ -82,8 +82,12 @@ async def _consume_log_queue(
 @agent_router.message(F.text == "Список агентів цього місяця 🚀")
 async def show_all_agents(message: Message, state: FSMContext, session: AsyncSession) -> None:
     async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
+        now = datetime.now()
         result = await session.execute(
-            select(AgentModel).filter(AgentModel.update_at.month() == datetime.now().month)
+            select(AgentModel).filter(
+                extract('year', AgentModel.update_at) == now.year,
+                extract('month', AgentModel.update_at) == now.month,
+            )
         )
         agents = result.scalars().all()
         keyboard = get_agents_keyboard(agents)
