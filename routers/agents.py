@@ -9,7 +9,7 @@ from aiogram.types import Message, CallbackQuery
 from aiogram.utils.chat_action import ChatActionSender
 from aiogram.exceptions import TelegramBadRequest
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, extract
 
 from keyboards.agents import get_agents_keyboard, AgentCallback, AgentAction, build_agent_action
 from models import AgentModel, async_session, Status
@@ -96,8 +96,13 @@ async def show_all_agents(message: Message, state: FSMContext, session: AsyncSes
 @agent_router.message(F.text == "Список агентів в роботі ⏳")
 async def show_all_agents_running(message: Message, state: FSMContext, session: AsyncSession) -> None:
     async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
+        now = datetime.now()
         result = await session.execute(
-            select(AgentModel).filter(AgentModel.update_at.month() == datetime.now().month, AgentModel.status == Status.in_progress)
+            select(AgentModel).filter(
+                extract('year', AgentModel.update_at) == now.year,
+                extract('month', AgentModel.update_at) == now.month,
+                AgentModel.status == Status.in_progress
+            )
         )
         agents = result.scalars().all()
         keyboard = get_agents_keyboard(agents)
@@ -110,8 +115,13 @@ async def show_all_agents_running(message: Message, state: FSMContext, session: 
 @agent_router.message(F.text == "Список запущених 🏁")
 async def show_all_agents_launched(message: Message, state: FSMContext, session: AsyncSession) -> None:
     async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
+        now = datetime.now()
         result = await session.execute(
-            select(AgentModel).filter(AgentModel.update_at.month() == datetime.now().month, AgentModel.status == Status.running)
+            select(AgentModel).filter(
+                extract('year', AgentModel.update_at) == now.year,
+                extract('month', AgentModel.update_at) == now.month,
+                AgentModel.status == Status.running
+            )
         )
         agents = result.scalars().all()
         keyboard = get_agents_keyboard(agents)
