@@ -11,7 +11,7 @@ from aiogram.exceptions import TelegramBadRequest
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, extract
 
-from keyboards.agents import get_agents_keyboard, AgentCallback, AgentAction, build_agent_action
+from keyboards.agents import get_agents_keyboard, AgentCallback, AgentAction, build_agent_action, build_agents_with_actions_keyboard
 from models import AgentModel, async_session, Status
 from middleware import DbSessionMiddleware
 from functions.test_products_multiprocessing import Product, TestProductMultiprocessing
@@ -90,7 +90,7 @@ async def show_all_agents(message: Message, state: FSMContext, session: AsyncSes
             )
         )
         agents = result.scalars().all()
-        keyboard = get_agents_keyboard(agents)
+        keyboard = build_agents_with_actions_keyboard(agents)
         await message.answer(
             f"Всього агентів цього місяця: {len(agents)}",
             reply_markup=keyboard
@@ -236,6 +236,7 @@ async def agent_set_done(callback: CallbackQuery, callback_data: AgentCallback, 
     )
     agent = result.scalar_one()
     agent.done = True
+    agent.status = Status.done
     await session.commit()
     await callback.message.answer(
         f"Агент <b>{agent.source_name}</b> відмічено як виконаний.",
