@@ -236,7 +236,6 @@ async def agent_set_done(callback: CallbackQuery, callback_data: AgentCallback, 
     )
     agent = result.scalar_one()
     agent.done = True
-    agent.status = Status.done
     await session.commit()
     await callback.message.answer(
         f"Агент <b>{agent.source_name}</b> відмічено як виконаний.",
