@@ -264,6 +264,23 @@ async def agent_set_qc(callback: CallbackQuery, callback_data: AgentCallback, se
     )
 
 
+@agent_router.callback_query(AgentCallback.filter(F.action == AgentAction.BB))
+async def agent_set_bb(callback: CallbackQuery, callback_data: AgentCallback, session: AsyncSession) -> None:
+    result = await session.execute(
+        select(AgentModel).filter_by(id=callback_data.id)
+    )
+    agent = result.scalar_one()
+    agent.bb = True
+    await session.commit()
+    await callback.message.answer(
+        f"Агент <b>{agent.source_name}</b> відмічено як BB.",
+    )
+    await callback.message.answer(
+        "Оберіть наступну дію:",
+        reply_markup=build_agent_action(agent),
+    )
+
+
 @agent_router.message(F.text == "Перевірити всі запущені агенти 🔍")
 async def check_all_agents(message: Message, state: FSMContext, session: AsyncSession) -> None:
     # 1. Скидаємо стан FSM, якщо користувач був у процесі введення чогось

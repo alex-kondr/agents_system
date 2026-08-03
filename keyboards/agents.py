@@ -14,6 +14,7 @@ class AgentAction(str, enum.Enum):
     DONE = "done"
     SHOW = "show"
     QC = "qc"
+    BB = "bb"
 
 
 class AgentCallback(CallbackData, prefix="agent"):
@@ -96,9 +97,13 @@ def build_agents_with_actions_keyboard(agents: List[AgentModel]) -> InlineKeyboa
             text="🔍 QC",
             callback_data=AgentCallback(id=agent.id, action=AgentAction.QC)
         )
+        builder.button(
+            text="📝 BB",
+            callback_data=AgentCallback(id=agent.id, action=AgentAction.BB)
+        )
 
     # Динамічна сітка: для кожного агента 2 кнопки у верхній рядок, 3 кнопки у нижній
-    layout = [2, 3] * len(agents)
+    layout = [2, 4] * len(agents)
     builder.adjust(*layout)
 
     return builder.as_markup()
