@@ -109,7 +109,7 @@ async def show_all_agents_running(message: Message, state: FSMContext, session: 
             )
         )
         agents = result.scalars().all()
-        keyboard = get_agents_keyboard(agents)
+        keyboard = build_agents_with_actions_keyboard(agents)
         await message.answer(
             f"Всього агентів в роботі: {len(agents)}",
             reply_markup=keyboard
@@ -128,7 +128,7 @@ async def show_all_agents_launched(message: Message, state: FSMContext, session:
             )
         )
         agents = result.scalars().all()
-        keyboard = get_agents_keyboard(agents)
+        keyboard = build_agents_with_actions_keyboard(agents)
         await message.answer(
             f"Всього запущених агентів: {len(agents)}",
             reply_markup=keyboard
