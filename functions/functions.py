@@ -10,7 +10,7 @@ from tqdm import tqdm
 import requests
 from requests.auth import HTTPBasicAuth
 import urllib3
-from requests_html import HTMLSession
+from requests_html import HTMLSession, AsyncHTMLSession
 
 from models import AgentModel
 
@@ -222,7 +222,7 @@ def get_status_agent(agent_id) -> Optional[str]:
     }
 
 
-def post_edit_page_agent(agent: AgentModel):
+async def post_edit_page_agent(agent: AgentModel):
     if not agent.bb:
         logger.info(f"Агент <b>{agent.source_name}</b> вже був переміщений в Git/BB")
         return
@@ -239,15 +239,14 @@ def post_edit_page_agent(agent: AgentModel):
         "group": agent.group
     }
 
-    session = HTMLSession()
-    response = session.post(
+    session = AsyncHTMLSession()
+    response = await session.post(
         url,
         data=data,
         verify=False,
         auth=HTTPBasicAuth(
-            username=os.getenv("USER-NAME"),
+            username=os.getenv("USER_NAME"),
             password=os.getenv("PASS")
-        ),
-        stream=True
+        )
     )
     logger.info(f"Агент <b>{agent.source_name}</b> переміщений в Git/BB. Статус: {response.status_code}")

@@ -271,7 +271,7 @@ async def agent_set_bb(callback: CallbackQuery, callback_data: AgentCallback, se
     agent = result.scalar_one()
     agent.bb = True
     await session.commit()
-    post_edit_page_agent(agent)
+    await post_edit_page_agent(agent)
     await callback.message.answer(
         f"Агент <b>{agent.source_name}</b> відмічено як BB.",
     )
