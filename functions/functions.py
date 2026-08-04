@@ -222,7 +222,7 @@ def get_status_agent(agent_id) -> Optional[str]:
     }
 
 
-async def post_edit_page_agent(agent: AgentModel):
+def post_edit_page_agent(agent: AgentModel):
     if not agent.bb:
         logger.info(f"Агент <b>{agent.source_name}</b> вже був переміщений в Git/BB")
         return
