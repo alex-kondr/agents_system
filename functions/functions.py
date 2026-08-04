@@ -224,6 +224,7 @@ def get_status_agent(agent_id) -> Optional[str]:
 
 async def post_edit_page_agent(agent: AgentModel):
     if not agent.bb:
+        logger.info(f"Агент <b>{agent.source_name}</b> вже був переміщений в Git/BB")
         return
 
     url = f"https://prunesearch.com/manage?action=editagent&agent_id={agent.agent_id}"
@@ -248,3 +249,4 @@ async def post_edit_page_agent(agent: AgentModel):
         ),
         stream=True
     )
+    logger.info(f"Агент <b>{agent.source_name}</b> переміщений в Git/BB")
