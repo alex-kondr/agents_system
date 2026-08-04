@@ -239,7 +239,8 @@ def post_edit_page_agent(agent: AgentModel):
         "group": agent.group
     }
 
-    response = requests.post(
+    session = HTMLSession()
+    response = session.post(
         url,
         data=data,
         verify=False,

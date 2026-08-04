@@ -11,7 +11,7 @@ from aiogram.exceptions import TelegramBadRequest
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, extract
 
-from keyboards.agents import get_agents_keyboard, AgentCallback, AgentAction, build_agents_with_actions_keyboard, build_agents_with_actions_keyboard
+from keyboards.agents import get_agents_keyboard, AgentCallback, AgentAction, build_agent_action, build_agents_with_actions_keyboard
 from models import AgentModel, async_session, Status
 from middleware import DbSessionMiddleware
 from functions.test_products_multiprocessing import Product, TestProductMultiprocessing
@@ -150,7 +150,7 @@ async def show_agent_action(callback: CallbackQuery, callback_data: AgentCallbac
         )
         await callback.message.answer(
             "Оберіть дію:",
-            reply_markup=build_agents_with_actions_keyboard(agent),
+            reply_markup=build_agent_action(agent),
         )
 
 
@@ -225,7 +225,7 @@ async def agent_run_action(callback: CallbackQuery, callback_data: AgentCallback
         )
         await callback.message.answer(
             "Оберіть наступну дію:",
-            reply_markup=build_agents_with_actions_keyboard(agent),
+            reply_markup=build_agent_action(agent),
         )
 
 
@@ -242,7 +242,7 @@ async def agent_set_done(callback: CallbackQuery, callback_data: AgentCallback, 
     )
     await callback.message.answer(
         "Оберіть наступну дію:",
-        reply_markup=build_agents_with_actions_keyboard(agent),
+        reply_markup=build_agent_action(agent),
     )
 
 
@@ -259,7 +259,7 @@ async def agent_set_qc(callback: CallbackQuery, callback_data: AgentCallback, se
     )
     await callback.message.answer(
         "Оберіть наступну дію:",
-        reply_markup=build_agents_with_actions_keyboard(agent),
+        reply_markup=build_agent_action(agent),
     )
 
 
@@ -277,7 +277,7 @@ async def agent_set_bb(callback: CallbackQuery, callback_data: AgentCallback, se
     )
     await callback.message.answer(
         "Оберіть наступну дію:",
-        reply_markup=build_agents_with_actions_keyboard(agent),
+        reply_markup=build_agent_action(agent),
     )
 
 
@@ -325,7 +325,7 @@ async def check_all_agents(message: Message, state: FSMContext, session: AsyncSe
             await message.answer(
                 text,
                 parse_mode="HTML",
-                reply_markup=build_agents_with_actions_keyboard(agent)
+                reply_markup=build_agent_action(agent)
             )
 
         await message.answer("Перевірка завершена.")

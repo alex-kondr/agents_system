@@ -52,19 +52,35 @@ def build_agent_action(agent: AgentModel) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
     builder.button(
-        text="Запустити тест",
+        text=f"🤖 {agent.source_name}",
+        callback_data=AgentCallback(id=agent.id, action=AgentAction.SHOW)
+    )
+    # Колонка 2 (права): Статус
+    builder.button(
+        text=f"📌 {agent.status.value}",
+        callback_data=AgentCallback(id=agent.id, action=AgentAction.SHOW)
+    )
+
+    # === 2-Й РЯДОК (Суцільний рядок з кнопками дій) ===
+    builder.button(
+        text="▶️ Запустити тест",
         callback_data=AgentCallback(id=agent.id, action=AgentAction.RUN_TEST)
     )
     builder.button(
-        text="Виконаний",
+        text="✅ Виконаний",
         callback_data=AgentCallback(id=agent.id, action=AgentAction.DONE)
     )
     builder.button(
-        text="QC",
+        text="🔍 QC",
         callback_data=AgentCallback(id=agent.id, action=AgentAction.QC)
     )
+    builder.button(
+        text="📝 BB",
+        callback_data=AgentCallback(id=agent.id, action=AgentAction.BB)
+    )
 
-    builder.adjust(3)
+    # Динамічна сітка: для кожного агента 2 кнопки у верхній рядок, 3 кнопки у нижній
+    builder.adjust(*[2, 4])
     return builder.as_markup()
 
 
