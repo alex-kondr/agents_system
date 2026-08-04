@@ -313,7 +313,7 @@ async def check_all_agents(message: Message, state: FSMContext, session: AsyncSe
                 f"🤖 <b>{agent.source_name}</b>\n"
                 f"━━━━━━━━━━━━━━━━━━\n"
                 f"📅 <b>Дата:</b> <code>{status.get('end_date', '—')}</code>\n"
-                f"📤 <b>Відправлено:</b> <code>{status.get('emit_count', 0)}</code>\n"
+                f"📤 <b>Відправлено:</b> <code>{status.get('emit_count', 0)} з {agent.max_emit}</code>\n"
                 f"⚠️ <b>Помилки:</b> <code>{status.get('errors_count', 0)}</code>\n"
                 f"⏳ <b>Черга:</b> <code>{status.get('jobs_in_queue', 0)}</code>\n"
                 f"📡 <b>Запити:</b> <code>{status.get('requests_count', 0)}</code>\n"

@@ -51,8 +51,8 @@ class AgentModel(Base):
     done: Mapped[bool] = mapped_column(Boolean(), default=False)
     bb: Mapped[bool] = mapped_column(Boolean(), default=False)
     end_date: Mapped[Optional[date]] = mapped_column(Date(), default=None)
-    code: Mapped[Optional[str]] = mapped_column(Text(), default=None)
-    count_emit: Mapped[Optional[int]] = mapped_column(default=None)
+    count_emit: Mapped[Optional[int]] = mapped_column(default=0)
+    max_emit: Mapped[Optional[int]] = mapped_column(default=0)
     create_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     update_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
