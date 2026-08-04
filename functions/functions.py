@@ -239,7 +239,7 @@ async def post_edit_page_agent(agent: AgentModel):
         "group": agent.group
     }
 
-    requests.post(
+    response = requests.post(
         url,
         data=data,
         verify=False,
@@ -249,4 +249,4 @@ async def post_edit_page_agent(agent: AgentModel):
         ),
         stream=True
     )
-    logger.info(f"Агент <b>{agent.source_name}</b> переміщений в Git/BB")
+    logger.info(f"Агент <b>{agent.source_name}</b> переміщений в Git/BB. Статус: {response.status_code}")
