@@ -16,7 +16,7 @@ from models import AgentModel, async_session, Status
 from middleware import DbSessionMiddleware
 from functions.test_products_multiprocessing import Product, TestProductMultiprocessing
 from functions.test_logs import LogProduct, TestLogProduct
-from functions.functions import get_status_agent
+from functions.functions import get_status_agent, post_edit_page_agent
 
 
 agent_router = Router()
@@ -270,6 +270,7 @@ async def agent_set_bb(callback: CallbackQuery, callback_data: AgentCallback, se
     )
     agent = result.scalar_one()
     agent.bb = True
+    await post_edit_page_agent(agent)
     await session.commit()
     await callback.message.answer(
         f"Агент <b>{agent.source_name}</b> відмічено як BB.",

@@ -12,10 +12,11 @@ from requests.auth import HTTPBasicAuth
 import urllib3
 from requests_html import HTMLSession
 
+from models import AgentModel
 
-current = os.path.dirname(os.path.realpath(__file__))
-parent = os.path.dirname(current)
-sys.path.append(parent)
+# current = os.path.dirname(os.path.realpath(__file__))
+# parent = os.path.dirname(current)
+# sys.path.append(parent)
 
 urllib3.disable_warnings()
 load_dotenv()
@@ -220,3 +221,30 @@ def get_status_agent(agent_id) -> Optional[str]:
         "error": error,
     }
 
+
+async def post_edit_page_agent(agent: AgentModel):
+    if not agent.bb:
+        return
+
+    url = f"https://prunesearch.com/manage?action=editagent&agent_id={agent.agent_id}"
+    data = {
+        "action": "editagent",
+        "agent_id": agent.agent_id,
+        "name": agent.name,
+        "source_name": agent.source_name,
+        "description": agent.description + "\n<br><b>Moved to Git/BB</b>",
+        "state_id": "10",
+        "priority": agent.priority,
+        "group": agent.group
+    }
+
+    requests.post(
+        url,
+        data=data,
+        verify=False,
+        auth=HTTPBasicAuth(
+            username=os.getenv("USER-NAME"),
+            password=os.getenv("PASS")
+        ),
+        stream=True
+    )
