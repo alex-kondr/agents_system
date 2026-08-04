@@ -80,7 +80,7 @@ def build_agents_with_actions_keyboard(agents: List[AgentModel]) -> InlineKeyboa
         )
         # Колонка 2 (права): Статус
         builder.button(
-            text=f"📌 {agent.status}",
+            text=f"📌 {agent.status.value}",
             callback_data=AgentCallback(id=agent.id, action=AgentAction.SHOW)
         )
 
