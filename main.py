@@ -51,8 +51,8 @@ async def lifespan(app: FastAPI):
     for attempt in range(max_retries):
         try:
             # Спершу скидаємо старі застряглі оновлення та реєструємо Webhook заново
-            await bot.delete_webhook(drop_pending_updates=True)
-            await bot.set_webhook(url=WEBHOOK_URL)
+            # await bot.delete_webhook(drop_pending_updates=True)
+            await bot.set_webhook(url=WEBHOOK_URL, drop_pending_updates=False)
 
             logger.info("Webhook та старі оновлення успішно скинуті/встановлені.")
 
