@@ -197,6 +197,8 @@ async def get_status_agent(session: aiohttp.ClientSession, agent_id: str) -> Dic
         date = datetime.fromisoformat(date).replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Europe/Kyiv")).strftime("%d.%m.%Y %H:%M")
 
     logger.info(f"Зроблено запит до ресурсу: статус {status_code}")
+    del html_content
+    del tree
     return {
         "end_date": date,
         "emit_count": emit_count,

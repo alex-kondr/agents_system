@@ -2,6 +2,8 @@ import asyncio
 import logging
 import os
 from contextlib import asynccontextmanager
+import ctypes
+import gc
 
 import aiohttp
 from aiogram import Bot, Dispatcher, types
@@ -27,10 +29,22 @@ dp = Dispatcher()
 dp.include_router(start_router)
 dp.include_router(agent_router)
 
+
+async def memory_cleaner_task():
+    while True:
+        await asyncio.sleep(900)  # кожні 15 хвилин
+        gc.collect()
+        try:
+            ctypes.CDLL("libc.so.6").malloc_trim(0)
+        except Exception:
+            pass
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     app.state.http_session = aiohttp.ClientSession()
     logger.info("Глобальну aiohttp.ClientSession успішно створено.")
+    cleaner_task = asyncio.create_task(memory_cleaner_task())
 
     try:
         await bot.delete_webhook(drop_pending_updates=True)
@@ -41,6 +55,7 @@ async def lifespan(app: FastAPI):
 
     yield
 
+    cleaner_task.cancel()
     await app.state.http_session.close()
     await bot.session.close()
 
