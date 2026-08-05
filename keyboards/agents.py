@@ -50,17 +50,11 @@ def get_agents_keyboard(agents: List[AgentModel]):
 
 def build_agent_action(agent: AgentModel) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-
+    text = f"🤖 {agent.source_name} - 📌 {agent.status.value}{' (BB)' if agent.bb else ' (Prune)'}"
     builder.button(
-        text=f"🤖 {agent.source_name}",
+        text=text,
         callback_data=AgentCallback(id=agent.id, action=AgentAction.SHOW)
     )
-    # Колонка 2 (права): Статус
-    builder.button(
-        text=f"📌 {agent.status.value}",
-        callback_data=AgentCallback(id=agent.id, action=AgentAction.SHOW)
-    )
-
     # === 2-Й РЯДОК (Суцільний рядок з кнопками дій) ===
     builder.button(
         text="▶️ Запустити тест",
@@ -80,7 +74,7 @@ def build_agent_action(agent: AgentModel) -> InlineKeyboardMarkup:
     )
 
     # Динамічна сітка: для кожного агента 2 кнопки у верхній рядок, 3 кнопки у нижній
-    builder.adjust(*[2, 4])
+    builder.adjust(*[1, 4])
     return builder.as_markup()
 
 
@@ -88,18 +82,11 @@ def build_agents_with_actions_keyboard(agents: List[AgentModel]) -> InlineKeyboa
     builder = InlineKeyboardBuilder()
 
     for agent in agents:
-        # === 1-Й РЯДОК (Таблична структура з двох колонок) ===
-        # Колонка 1 (ліва): Назва агента
+        text = f"🤖 {agent.source_name} - 📌 {agent.status.value}{' (BB)' if agent.bb else ' (Prune)'}"
         builder.button(
-            text=f"🤖 {agent.source_name}",
+            text=text,
             callback_data=AgentCallback(id=agent.id, action=AgentAction.SHOW)
         )
-        # Колонка 2 (права): Статус
-        builder.button(
-            text=f"📌 {agent.status.value}",
-            callback_data=AgentCallback(id=agent.id, action=AgentAction.SHOW)
-        )
-
         # === 2-Й РЯДОК (Суцільний рядок з кнопками дій) ===
         builder.button(
             text="▶️ Запустити тест",
@@ -119,7 +106,7 @@ def build_agents_with_actions_keyboard(agents: List[AgentModel]) -> InlineKeyboa
         )
 
     # Динамічна сітка: для кожного агента 2 кнопки у верхній рядок, 3 кнопки у нижній
-    layout = [2, 4] * len(agents)
+    layout = [1, 4] * len(agents)
     builder.adjust(*layout)
 
     return builder.as_markup()

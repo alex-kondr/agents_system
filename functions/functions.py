@@ -1,24 +1,17 @@
 import os
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import sys
 import logging
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
-from tqdm import tqdm
-import requests
-from requests.auth import HTTPBasicAuth
-import urllib3
-from requests_html import HTMLSession, AsyncHTMLSession
+import aiohttp
+from bs4 import BeautifulSoup
+from lxml import etree  # Для підтримки точних XPath виразів
 
 from models import AgentModel
 
-# current = os.path.dirname(os.path.realpath(__file__))
-# parent = os.path.dirname(current)
-# sys.path.append(parent)
-
-urllib3.disable_warnings()
 load_dotenv()
 
 
@@ -52,9 +45,25 @@ if not logger.handlers:
     logger.addHandler(handler)
 
 
-def load_file(agent_id: int, type_file: str = "yaml", size: int|str = "", decode: bool = False, session_id: int = 0) -> str | bytes:
+def get_auth() -> aiohttp.BasicAuth:
+    """Хелпер для створення об'єкта авторизації aiohttp."""
+    return aiohttp.BasicAuth(
+        login=os.getenv("USER_NAME", ""),
+        password=os.getenv("PASS", "")
+    )
+
+
+async def load_file(
+    session: aiohttp.ClientSession,
+    agent_id: int,
+    type_file: str = "yaml",
+    size: int | str = "",
+    decode: bool = False,
+    session_id: int = 0
+) -> str | bytes:
     """
     type_file: "yaml", "log"
+    Завантажує файл потоком (streaming), не завантажуючи весь масив даних у пам'ять одночасно.
     """
     action = {
         "log": "looksession",
@@ -64,29 +73,17 @@ def load_file(agent_id: int, type_file: str = "yaml", size: int|str = "", decode
     if session_id:
         url += f"&session_id={session_id}"
 
-    response = requests.get(
-        url,
-        verify=False,
-        auth=HTTPBasicAuth(
-            username=os.getenv("USER_NAME"),
-            password=os.getenv("PASS")
-        ),
-        stream=True
-    )
-
-    total_size = int(response.headers.get('content-length', 0))
-    block_size = 1024 * 1024  # 1 MB
-    content = bytearray()
-
-    with tqdm(total=total_size, unit='iB', unit_scale=True, unit_divisor=1024, desc=f"Downloading {type_file}") as t:
-        for data in response.iter_content(block_size):
-            t.update(len(data))
-            content.extend(data)
+    # ssl=False відповідає verify=False у requests
+    async with session.get(url, auth=get_auth(), ssl=False) as response:
+        content = bytearray()
+        # Зчитуємо почастинно (по 1MB), щоб зекономити RAM
+        async for chunk in response.content.iter_chunked(1024 * 1024):
+            content.extend(chunk)
 
     return content.decode("utf-8") if decode else bytes(content)
 
 
-def is_include(xnames: list = [], text: str = "", lower: bool = False) -> str|None:
+def is_include(xnames: list = [], text: str = "", lower: bool = False) -> Optional[str]:
     for xname in xnames:
         if lower:
             if xname.lower() in text.lower():
@@ -94,55 +91,51 @@ def is_include(xnames: list = [], text: str = "", lower: bool = False) -> str|No
         else:
             if xname in text:
                 return xname
+    return None
 
 
-def get_old_agent(agent_id: str):
+async def get_old_agent_html(session: aiohttp.ClientSession, agent_id: str) -> str:
     url = f"https://prunesearch.com/manage?action=agent&agent_id={agent_id}"
+    async with session.get(url, auth=get_auth(), ssl=False) as response:
+        return await response.text()
 
-    session = HTMLSession()
-    response = session.get(
-        url,
-        verify=False,
-        auth=HTTPBasicAuth(
-            username=os.getenv("USER_NAME"),
-            password=os.getenv("PASS")
-        )
+
+def get_agent_name(html_content: str) -> str:
+    """Використовуємо lxml.html для точного збереження логики XPath."""
+    tree = etree.HTML(html_content)
+    result = tree.xpath("//body/b/text()")
+    return result[0] if result else ""
+
+
+def get_agent_code(html_content: str) -> List[str]:
+    """Парсинг тегу textarea через BeautifulSoup."""
+    soup = BeautifulSoup(html_content, "html.parser")
+    textarea = soup.find("textarea")
+    if not textarea:
+        return []
+
+    full_text = textarea.get_text()
+    cleaned_code = full_text.replace(
+        "(data, context, session)",
+        "(data: Response, context: dict[str, str], session: Session)"
+    ).replace(
+        "(context, session)",
+        "(context: dict[str, str], session: Session)"
     )
-    return response.html
+    return cleaned_code.split('\n')
 
 
-def get_agent_name(html):
-    return html.xpath("//body/b/text()")[0]
-
-
-def get_agent_code(html):
-    return html.find(
-            "textarea", clean=True, first=True
-        ).full_text.replace(
-            "(data, context, session)",
-            "(data: Response, context: dict[str, str], session: Session)"
-        ).replace(
-            "(context, session)",
-            "(context: dict[str, str], session: Session)"
-        ).split('\n')
-
-
-def get_source_name(agent_id):
+async def get_source_name(session: aiohttp.ClientSession, agent_id: str) -> str:
     url = f"https://prunesearch.com/manage?action=editagent&agent_id={agent_id}"
+    async with session.get(url, auth=get_auth(), ssl=False) as response:
+        html_content = await response.text()
 
-    session = HTMLSession()
-    response = session.get(
-        url,
-        verify=False,
-        auth=HTTPBasicAuth(
-            username=os.getenv("USER_NAME"),
-            password=os.getenv("PASS")
-        )
-    )
-    return response.html.xpath('//input[@name="source_name"]/@value')[0]
+    tree = etree.HTML(html_content)
+    values = tree.xpath('//input[@name="source_name"]/@value')
+    return values[0] if values else ""
 
 
-def upload_code(agent_id, code, run: bool = True):
+async def upload_code(session: aiohttp.ClientSession, agent_id: str, code: str, run: bool = True):
     url = f"https://prunesearch.com/manage?action=agent&agent_id={agent_id}"
 
     payload = {
@@ -152,66 +145,58 @@ def upload_code(agent_id, code, run: bool = True):
         'subaction': 'Save and run' if run else 'Save and continue editing'
     }
 
-    response = requests.post(
-        url,
-        data=payload,
-        verify=False,
-        auth=HTTPBasicAuth(
-            username=os.getenv("USER_NAME"),
-            password=os.getenv("PASS")
-        ),
-        stream=True
-    )
-
-    if response.status_code == 200:
-        logger.info(f"Code '{payload['subaction']}' successfully")
-    else:
-        logger.error(f"Some error uploaded: code: {response.status_code}")
+    async with session.post(url, data=payload, auth=get_auth(), ssl=False) as response:
+        if response.status == 200:
+            logger.info(f"Code '{payload['subaction']}' successfully")
+        else:
+            logger.error(f"Some error uploaded: code: {response.status}")
 
 
-def get_end_date_agent(agent_id) -> Optional[str]:
+async def get_end_date_agent(session: aiohttp.ClientSession, agent_id: str) -> Optional[str]:
     url = f"https://prunesearch.com/manage?action=sessions&agent_id={agent_id}"
 
-    session = HTMLSession()
-    response = session.get(
-        url,
-        verify=False,
-        auth=HTTPBasicAuth(
-            username=os.getenv("USER_NAME"),
-            password=os.getenv("PASS")
-        )
-    )
-    date = response.html.xpath('(//td)[1]/parent::*/td[4]/text()')[0].strip()
+    async with session.get(url, auth=get_auth(), ssl=False) as response:
+        html_content = await response.text()
+
+    tree = etree.HTML(html_content)
+    date_list = tree.xpath('(//td)[1]/parent::*/td[4]/text()')
+    date = date_list[0].strip() if date_list else 'None'
+
     if date == 'None':
-        error = response.html.xpath('(//td)[1]/parent::*/td[16]/text()')[0].strip()
-        emit_count = response.html.xpath('(//td)[1]/parent::*/td[8]/text()')[0].strip()
-        raise ValueError(f"{error = }\n{emit_count = }\nNot end")
+        error_list = tree.xpath('(//td)[1]/parent::*/td[16]/text()')
+        emit_list = tree.xpath('(//td)[1]/parent::*/td[8]/text()')
+
+        error = error_list[0].strip() if error_list else ""
+        emit_count = emit_list[0].strip() if emit_list else ""
+        raise ValueError(f"error = {error}\nemit_count = {emit_count}\nNot end")
 
     return datetime.fromisoformat(date).replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Europe/Kyiv")).strftime("%d.%m.%Y %H:%M")
 
 
-def get_status_agent(agent_id) -> Optional[str]:
+async def get_status_agent(session: aiohttp.ClientSession, agent_id: str) -> Dict[str, Any]:
     url = f"https://prunesearch.com/manage?action=sessions&agent_id={agent_id}"
 
-    session = HTMLSession()
-    response = session.get(
-        url,
-        verify=False,
-        auth=HTTPBasicAuth(
-            username=os.getenv("USER_NAME"),
-            password=os.getenv("PASS")
-        )
-    )
-    emit_count = response.html.xpath('(//td)[1]/parent::*/td[8]/text()')[0].strip()
-    errors_count = response.html.xpath('(//td)[1]/parent::*/td[9]/text()')[0].strip()
-    jobs_in_queue = response.html.xpath('(//td)[1]/parent::*/td[12]/text()')[0].strip()
-    requests_count = response.html.xpath('(//td)[1]/parent::*/td[13]/text()')[0].strip()
-    error = response.html.xpath('(//td)[1]/parent::*/td[16]/text()')[0].strip()
-    date = response.html.xpath('(//td)[1]/parent::*/td[4]/text()')[0].strip()
-    if date != 'None':
+    async with session.get(url, auth=get_auth(), ssl=False) as response:
+        html_content = await response.text()
+        status_code = response.status
+
+    tree = etree.HTML(html_content)
+
+    def get_xpath_val(index: int) -> str:
+        res = tree.xpath(f'(//td)[1]/parent::*/td[{index}]/text()')
+        return res[0].strip() if res else ''
+
+    emit_count = get_xpath_val(8)
+    errors_count = get_xpath_val(9)
+    jobs_in_queue = get_xpath_val(12)
+    requests_count = get_xpath_val(13)
+    error = get_xpath_val(16)
+    date = get_xpath_val(4)
+
+    if date and date != 'None':
         date = datetime.fromisoformat(date).replace(tzinfo=ZoneInfo("UTC")).astimezone(ZoneInfo("Europe/Kyiv")).strftime("%d.%m.%Y %H:%M")
 
-    logger.info(f"Зроблено запит до ресурсу: статус {response.status_code}")
+    logger.info(f"Зроблено запит до ресурсу: статус {status_code}")
     return {
         "end_date": date,
         "emit_count": emit_count,
@@ -222,7 +207,7 @@ def get_status_agent(agent_id) -> Optional[str]:
     }
 
 
-async def post_edit_page_agent(agent: AgentModel):
+async def post_edit_page_agent(session: aiohttp.ClientSession, agent: AgentModel):
     if not agent.bb:
         logger.info(f"Агент <b>{agent.source_name}</b> вже був переміщений в Git/BB")
         return
@@ -230,23 +215,14 @@ async def post_edit_page_agent(agent: AgentModel):
     url = f"https://prunesearch.com/manage?action=editagent&agent_id={agent.agent_id}"
     data = {
         "action": "editagent",
-        "agent_id": agent.agent_id,
+        "agent_id": str(agent.agent_id),
         "name": agent.name,
         "source_name": agent.source_name,
         "description": agent.description + "\n<br><b>Moved to Git/BB</b>",
         "state_id": "10",
-        "priority": agent.priority,
-        "group": agent.group
+        "priority": str(agent.priority),
+        "group": str(agent.group)
     }
 
-    session = AsyncHTMLSession()
-    response = await session.post(
-        url,
-        data=data,
-        verify=False,
-        auth=HTTPBasicAuth(
-            username=os.getenv("USER_NAME"),
-            password=os.getenv("PASS")
-        )
-    )
-    logger.info(f"Агент <b>{agent.source_name}</b> переміщений в Git/BB. Статус: {response.status_code}")
+    async with session.post(url, data=data, auth=get_auth(), ssl=False) as response:
+        logger.info(f"Агент <b>{agent.source_name}</b> переміщений в Git/BB. Статус: {response.status}")

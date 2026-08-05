@@ -14,7 +14,7 @@ import yaml
 from tqdm import tqdm
 import difflib
 
-from .functions import load_file, get_agent_name, get_old_agent, get_end_date_agent
+from .functions import load_file, get_agent_name, get_old_agent_html, get_end_date_agent
 
 
 def is_include(xnames: list = [], text: str = "", lower: bool = False) -> str|None:
@@ -305,9 +305,9 @@ class Product:
         # Перевірка наявності імені агента
         if not meta_data.get("agent_name"):
             try:
-                from functions.functions import get_agent_name, get_old_agent
+                # from functions.functions import get_agent_name, get_old_agent
                 logger.info(f"Agent name not found in YAML. Fetching from API for ID {self.agent_id}...")
-                html = get_old_agent(self.agent_id)
+                html = get_old_agent_html(self.agent_id)
                 meta_data["agent_name"] = get_agent_name(html)
             except Exception:
                 meta_data["agent_name"] = f"Agent-{self.agent_id}"

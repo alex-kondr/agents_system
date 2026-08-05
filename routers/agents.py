@@ -10,6 +10,7 @@ from aiogram.utils.chat_action import ChatActionSender
 from aiogram.exceptions import TelegramBadRequest
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, extract
+import aiohttp
 
 from keyboards.agents import get_agents_keyboard, AgentCallback, AgentAction, build_agent_action, build_agents_with_actions_keyboard
 from models import AgentModel, async_session, Status
@@ -80,7 +81,7 @@ async def _consume_log_queue(
 # ---------- Handlers ----------
 
 @agent_router.message(F.text == "Список агентів цього місяця 🚀")
-async def show_all_agents(message: Message, state: FSMContext, session: AsyncSession) -> None:
+async def show_all_agents(message: Message, state: FSMContext, session: AsyncSession, http_session: aiohttp.ClientSession) -> None:
     async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
         now = datetime.now()
         result = await session.execute(
@@ -98,7 +99,7 @@ async def show_all_agents(message: Message, state: FSMContext, session: AsyncSes
 
 
 @agent_router.message(F.text == "Список агентів в роботі ⏳")
-async def show_all_agents_running(message: Message, state: FSMContext, session: AsyncSession) -> None:
+async def show_all_agents_running(message: Message, state: FSMContext, session: AsyncSession, http_session: aiohttp.ClientSession) -> None:
     async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
         now = datetime.now()
         result = await session.execute(
@@ -117,7 +118,7 @@ async def show_all_agents_running(message: Message, state: FSMContext, session: 
 
 
 @agent_router.message(F.text == "Список запущених 🏁")
-async def show_all_agents_launched(message: Message, state: FSMContext, session: AsyncSession) -> None:
+async def show_all_agents_launched(message: Message, state: FSMContext, session: AsyncSession, http_session: aiohttp.ClientSession) -> None:
     async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
         now = datetime.now()
         result = await session.execute(
@@ -136,7 +137,7 @@ async def show_all_agents_launched(message: Message, state: FSMContext, session:
 
 
 @agent_router.callback_query(AgentCallback.filter(F.action == AgentAction.SHOW))
-async def show_agent_action(callback: CallbackQuery, callback_data: AgentCallback, session: AsyncSession) -> None:
+async def show_agent_action(callback: CallbackQuery, callback_data: AgentCallback, session: AsyncSession, http_session: aiohttp.ClientSession) -> None:
     try:
         await callback.answer()
     except TelegramBadRequest:
@@ -155,7 +156,7 @@ async def show_agent_action(callback: CallbackQuery, callback_data: AgentCallbac
 
 
 @agent_router.callback_query(AgentCallback.filter(F.action == AgentAction.RUN_TEST))
-async def agent_run_action(callback: CallbackQuery, callback_data: AgentCallback, session: AsyncSession) -> None:
+async def agent_run_action(callback: CallbackQuery, callback_data: AgentCallback, session: AsyncSession, http_session: aiohttp.ClientSession) -> None:
     # Відповідаємо телеграму відразу при натисканні, щоб кнопка не зависала і не виникав timeout (30s)
     try:
         await callback.answer("Тестування розпочато...")
@@ -230,7 +231,7 @@ async def agent_run_action(callback: CallbackQuery, callback_data: AgentCallback
 
 
 @agent_router.callback_query(AgentCallback.filter(F.action == AgentAction.DONE))
-async def agent_set_done(callback: CallbackQuery, callback_data: AgentCallback, session: AsyncSession) -> None:
+async def agent_set_done(callback: CallbackQuery, callback_data: AgentCallback, session: AsyncSession, http_session: aiohttp.ClientSession) -> None:
     result = await session.execute(
         select(AgentModel).filter_by(id=callback_data.id)
     )
@@ -247,7 +248,7 @@ async def agent_set_done(callback: CallbackQuery, callback_data: AgentCallback, 
 
 
 @agent_router.callback_query(AgentCallback.filter(F.action == AgentAction.QC))
-async def agent_set_qc(callback: CallbackQuery, callback_data: AgentCallback, session: AsyncSession) -> None:
+async def agent_set_qc(callback: CallbackQuery, callback_data: AgentCallback, session: AsyncSession, http_session: aiohttp.ClientSession) -> None:
     result = await session.execute(
         select(AgentModel).filter_by(id=callback_data.id)
     )
@@ -264,14 +265,14 @@ async def agent_set_qc(callback: CallbackQuery, callback_data: AgentCallback, se
 
 
 @agent_router.callback_query(AgentCallback.filter(F.action == AgentAction.BB))
-async def agent_set_bb(callback: CallbackQuery, callback_data: AgentCallback, session: AsyncSession) -> None:
+async def agent_set_bb(callback: CallbackQuery, callback_data: AgentCallback, session: AsyncSession, http_session: aiohttp.ClientSession) -> None:
     result = await session.execute(
         select(AgentModel).filter_by(id=callback_data.id)
     )
     agent = result.scalar_one()
     agent.bb = True
     await session.commit()
-    await post_edit_page_agent(agent)
+    await post_edit_page_agent(http_session, agent)
     await callback.message.answer(
         f"Агент <b>{agent.source_name}</b> відмічено як BB.",
     )
@@ -282,13 +283,13 @@ async def agent_set_bb(callback: CallbackQuery, callback_data: AgentCallback, se
 
 
 @agent_router.message(F.text == "Перевірити всі запущені агенти 🔍")
-async def check_all_agents(message: Message, state: FSMContext, session: AsyncSession) -> None:
+async def check_all_agents(message: Message, state: FSMContext, session: AsyncSession, http_session: aiohttp.ClientSession) -> None:
     # 1. Скидаємо стан FSM, якщо користувач був у процесі введення чогось
     await state.clear()
 
     async with ChatActionSender.typing(bot=message.bot, chat_id=message.chat.id):
         result = await session.execute(
-            select(AgentModel).filter_by(status=Status.running)
+            select(AgentModel).filter_by(status=Status.running, bb=False)
         )
         agents = result.scalars().all()
 
@@ -299,10 +300,8 @@ async def check_all_agents(message: Message, state: FSMContext, session: AsyncSe
         )
 
         for agent in agents:
-            # 2. КРИТИЧНО: Виконуємо синхронний запит у окремому потоці,
-            # щоб не блокувати асинхронний Event Loop aiogram
             try:
-                status = await asyncio.to_thread(get_status_agent, agent.agent_id)
+                status = await get_status_agent(http_session, str(agent.agent_id))
             except Exception as e:
                 status = {"error": str(e)}
 
