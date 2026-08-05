@@ -51,7 +51,7 @@ app = FastAPI(lifespan=lifespan)
 @app.post(WEBHOOK_PATH)
 async def bot_webhook(request: Request):
     data = await request.json()
-    update = types.Update.model_validate(data, context_env={"bot": bot})
+    update = types.Update.model_validate(data, context={"bot": bot})
     await dp.feed_update(bot, update, http_session=app.state.http_session)
     return {"status": "ok"}
 
