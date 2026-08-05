@@ -8,6 +8,7 @@ import gc
 import aiohttp
 from aiogram import Bot, Dispatcher, types
 from aiogram.client.default import DefaultBotProperties
+from aiogram.exceptions import TelegramRetryAfter
 from aiogram.enums import ParseMode
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
@@ -46,12 +47,29 @@ async def lifespan(app: FastAPI):
     logger.info("Глобальну aiohttp.ClientSession успішно створено.")
     cleaner_task = asyncio.create_task(memory_cleaner_task())
 
-    try:
-        await bot.delete_webhook(drop_pending_updates=True)
-        await bot.set_webhook(url=WEBHOOK_URL)
-        logger.info("Webhook успішно встановлено.")
-    except Exception as e:
-        logger.error(f"Помилка встановлення вебхука: {e}")
+    max_retries = 3
+    for attempt in range(max_retries):
+        try:
+            # Спершу скидаємо старі застряглі оновлення та реєструємо Webhook заново
+            await bot.delete_webhook(drop_pending_updates=True)
+            await bot.set_webhook(url=WEBHOOK_URL)
+
+            logger.info("Webhook та старі оновлення успішно скинуті/встановлені.")
+
+            return
+        except TelegramRetryAfter as e:
+            wait = e.retry_after + 1
+            logger.warning(
+                f"Telegram flood limit (спроба {attempt+1}/{max_retries}): чекаємо {wait} сек..."
+
+            )
+            if attempt < max_retries - 1:
+                await asyncio.sleep(wait)
+            else:
+                logger.error("Вичерпано ліміт спроб встановлення webhook.")
+        except Exception as e:
+            logger.error(f"Не вдалося встановити Webhook при старті: {e}")
+            break
 
     yield
 
@@ -61,6 +79,11 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+
+
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
 
 
 @app.post(WEBHOOK_PATH)
